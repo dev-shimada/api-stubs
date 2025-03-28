@@ -1,0 +1,23 @@
+{
+    "name": "api-stubs",
+    "build": {
+        "context": ".",
+        "dockerfile": "Dockerfile",
+        "target": "vscode"
+    },
+    "workspaceFolder": "/workspace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.Go",
+                "GitHub.copilot",
+                "saoudrizwan.claude-dev"
+            ]
+        }
+    },
+    "mounts": [
+        "source=${localWorkspaceFolder}/,target=/workspace,type=bind"
+    ],
+    "remoteUser": "root",
+    "postCreateCommand": "/bin/sh .devcontainer/post_create.sh"
+}

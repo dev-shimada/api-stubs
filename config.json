@@ -1,0 +1,12 @@
+[
+  {
+    "endpoint": "/example",
+    "method": "GET",
+    "response": {
+      "status": 200,
+      "body": {
+        "message": "This is a stub response"
+      }
+    }
+  }
+]
