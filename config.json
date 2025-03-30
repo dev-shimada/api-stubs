@@ -1,12 +1,15 @@
 [
   {
-    "endpoint": "/example",
-    "method": "GET",
+    "request": {
+      "url": "/example",
+      "method": "GET",
+      "queryParameters": {
+        "param1": "value1"
+      }
+    },
     "response": {
       "status": 200,
-      "body": {
-        "message": "This is a stub response"
-      }
+      "body": "{\"message\": \"This is a stub response.\nparam1: {{ .QueryParameters.param1 }}\"}"
     }
   }
 ]
