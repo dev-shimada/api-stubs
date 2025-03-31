@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,8 +23,14 @@ type Endpoint struct {
 		URLPathPattern  string `json:"urlPathPattern"`
 		URLPathTemplate string `json:"urlPathTemplate"`
 
-		Method          string            `json:"method"`
-		QueryParameters map[string]string `json:"queryParameters"`
+		Method          string `json:"method"`
+		QueryParameters map[string]struct {
+			EqualTo        string `json:"equalTo"`
+			Matches        string `json:"matches"`
+			DoesNotMatch   string `json:"doesNotMatch"`
+			Contains       string `json:"contains"`
+			DoesNotContain string `json:"doesNotContain"`
+		} `json:"queryParameters"`
 		// BodyPatterns    []map[string]string          `json:"bodyParameters"`
 	} `json:"request"`
 	Response struct {
@@ -36,30 +42,13 @@ type Endpoint struct {
 	} `json:"response"`
 }
 
-func loadConfig(filePath string) ([]Endpoint, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var endpoints []Endpoint
-	byteValue, _ := io.ReadAll(file)
-	err = json.Unmarshal(byteValue, &endpoints)
-	if err != nil {
-		return nil, err
-	}
-
-	return endpoints, nil
-}
-
 func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		endpoints, err := loadConfig("config.json")
 		if err != nil {
-			log.Fatalf("Failed to load configuration: %v", err)
+			slog.Error(fmt.Sprintf("Failed to load configuration: %v", err))
 		}
 		for _, endpoint := range endpoints {
 			var url string
@@ -95,7 +84,8 @@ func main() {
 				return
 			}
 
-			if r.URL.Path == url && r.Method == endpoint.Request.Method {
+			isMatchQuery := queryMatcher(endpoint, r.URL.Query())
+			if r.URL.Path == url && r.Method == endpoint.Request.Method && isMatchQuery {
 				w.WriteHeader(endpoint.Response.Status)
 
 				tpl, err := template.New("response").Parse(responseBody)
@@ -134,4 +124,37 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		slog.Info(fmt.Sprintf("HTTP server Shutdown: %v", err))
 	}
+}
+
+func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
+	for k, v := range endpoint.Request.QueryParameters {
+		if v.EqualTo != "" {
+			if gotQuery.Get(k) != v.EqualTo {
+				return false
+			}
+		}
+		if v.Matches != "" {
+			if gotQuery.Get(k) != v.Matches {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func loadConfig(filePath string) ([]Endpoint, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var endpoints []Endpoint
+	byteValue, _ := io.ReadAll(file)
+	err = json.Unmarshal(byteValue, &endpoints)
+	if err != nil {
+		return nil, err
+	}
+
+	return endpoints, nil
 }

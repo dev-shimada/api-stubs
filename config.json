@@ -4,12 +4,14 @@
       "url": "/example",
       "method": "GET",
       "queryParameters": {
-        "param1": "value1"
+        "param1": {
+          "EqualTo": "value1"
+        }
       }
     },
     "response": {
       "status": 200,
-      "body": "{\"message\": \"This is a stub response.\nparam1: {{ .QueryParameters.param1 }}\"}"
+      "body": "{\"message\": \"This is a stub response.\"}"
     }
   }
 ]
