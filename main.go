@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
+	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -94,12 +96,25 @@ func main() {
 					http.Error(w, "Failed to parse response template", http.StatusInternalServerError)
 					return
 				}
-				if err := tpl.Execute(w, endpoint.Request); err != nil {
+
+				type gotParams struct {
+					Path  map[string]string
+					Query map[string]string
+				}
+				q := make(map[string]string)
+				for k, v := range r.URL.Query() {
+					q[k] = v[0]
+				}
+				gp := gotParams{
+					Query: q,
+				}
+
+				if err := tpl.Execute(w, gp); err != nil {
 					slog.Error(fmt.Sprintf("Failed to execute response template: %s", err))
 					http.Error(w, "Failed to execute response template", http.StatusInternalServerError)
 					return
 				}
-				// w.Write([]byte(responseBody))
+
 				return
 			}
 		}
@@ -128,13 +143,28 @@ func main() {
 
 func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 	for k, v := range endpoint.Request.QueryParameters {
-		if v.EqualTo != "" {
+		if len(v.EqualTo) != 0 {
 			if gotQuery.Get(k) != v.EqualTo {
 				return false
 			}
 		}
-		if v.Matches != "" {
-			if gotQuery.Get(k) != v.Matches {
+		if len(v.Matches) != 0 {
+			if !regexp.MustCompile(v.Matches).MatchString(gotQuery.Get(k)) {
+				return false
+			}
+		}
+		if len(v.DoesNotMatch) != 0 {
+			if regexp.MustCompile(v.DoesNotMatch).MatchString(gotQuery.Get(k)) {
+				return false
+			}
+		}
+		if len(v.Contains) != 0 {
+			if strings.Contains(gotQuery.Get(k), v.Contains) {
+				return false
+			}
+		}
+		if len(v.DoesNotContain) != 0 {
+			if !strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
 				return false
 			}
 		}

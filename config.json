@@ -5,13 +5,19 @@
       "method": "GET",
       "queryParameters": {
         "param1": {
-          "EqualTo": "value1"
+          "equalTo": "value1"
+        },
+        "param2": {
+          "matches": "[a-zA-Z0-9]{3}"
+        },
+        "param3": {
+          "doesNotMatch": "[a-zA-Z0-9]{3}"
         }
       }
     },
     "response": {
       "status": 200,
-      "body": "{\"message\": \"This is a stub response.\"}"
+      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\"}\n"
     }
   }
 ]
