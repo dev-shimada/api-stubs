@@ -17,7 +17,7 @@
     },
     "response": {
       "status": 200,
-      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\"}\n"
+      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\", \"param3\"=\"{{.Query.param3}}\"}\n"
     }
   }
 ]
