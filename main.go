@@ -159,12 +159,12 @@ func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 			}
 		}
 		if len(v.Contains) != 0 {
-			if strings.Contains(gotQuery.Get(k), v.Contains) {
+			if !strings.Contains(gotQuery.Get(k), v.Contains) {
 				return false
 			}
 		}
 		if len(v.DoesNotContain) != 0 {
-			if !strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
+			if strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
 				return false
 			}
 		}

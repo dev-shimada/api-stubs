@@ -12,12 +12,18 @@
         },
         "param3": {
           "doesNotMatch": "[a-zA-Z0-9]{3}"
+        },
+        "param4": {
+          "contains": "a"
+        },
+        "param5": {
+          "doesNotContain": "a"
         }
       }
     },
     "response": {
       "status": 200,
-      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\", \"param3\"=\"{{.Query.param3}}\"}\n"
+      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\", \"param3\"=\"{{.Query.param3}}\", \"param4\"=\"{{.Query.param4}}\", \"param5\"=\"{{.Query.param5}}\"}\n"
     }
   }
 ]
