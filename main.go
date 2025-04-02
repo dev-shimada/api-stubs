@@ -33,6 +33,13 @@ type Endpoint struct {
 			Contains       string `json:"contains"`
 			DoesNotContain string `json:"doesNotContain"`
 		} `json:"queryParameters"`
+		PathParameters map[string]struct {
+			EqualTo        string `json:"equalTo"`
+			Matches        string `json:"matches"`
+			DoesNotMatch   string `json:"doesNotMatch"`
+			Contains       string `json:"contains"`
+			DoesNotContain string `json:"doesNotContain"`
+		} `json:"pathParameters"`
 		// BodyPatterns    []map[string]string          `json:"bodyParameters"`
 	} `json:"request"`
 	Response struct {
@@ -86,8 +93,9 @@ func main() {
 				return
 			}
 
+			isMatchPath := pathMatcher(endpoint, r.URL.Path)
 			isMatchQuery := queryMatcher(endpoint, r.URL.Query())
-			if r.URL.Path == url && r.Method == endpoint.Request.Method && isMatchQuery {
+			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery {
 				w.WriteHeader(endpoint.Response.Status)
 
 				tpl, err := template.New("response").Parse(responseBody)
@@ -139,6 +147,37 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		slog.Info(fmt.Sprintf("HTTP server Shutdown: %v", err))
 	}
+}
+
+func pathMatcher(endpoint Endpoint, gotPathParameter string) bool {
+	// for k, v := range endpoint.Request.QueryParameters {
+	// 	if len(v.EqualTo) != 0 {
+	// 		if gotQuery.Get(k) != v.EqualTo {
+	// 			return false
+	// 		}
+	// 	}
+	// 	if len(v.Matches) != 0 {
+	// 		if !regexp.MustCompile(v.Matches).MatchString(gotQuery.Get(k)) {
+	// 			return false
+	// 		}
+	// 	}
+	// 	if len(v.DoesNotMatch) != 0 {
+	// 		if regexp.MustCompile(v.DoesNotMatch).MatchString(gotQuery.Get(k)) {
+	// 			return false
+	// 		}
+	// 	}
+	// 	if len(v.Contains) != 0 {
+	// 		if !strings.Contains(gotQuery.Get(k), v.Contains) {
+	// 			return false
+	// 		}
+	// 	}
+	// 	if len(v.DoesNotContain) != 0 {
+	// 		if strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
+	// 			return false
+	// 		}
+	// 	}
+	// }
+	return true
 }
 
 func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
