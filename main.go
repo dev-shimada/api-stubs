@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"text/template"
@@ -60,22 +61,6 @@ func main() {
 			slog.Error(fmt.Sprintf("Failed to load configuration: %v", err))
 		}
 		for _, endpoint := range endpoints {
-			var url string
-			switch {
-			case endpoint.Request.URL != "":
-				url = endpoint.Request.URL
-			case endpoint.Request.URLPattern != "":
-				url = endpoint.Request.URLPattern
-			case endpoint.Request.URLPath != "":
-				url = endpoint.Request.URLPath
-			case endpoint.Request.URLPathPattern != "":
-				url = endpoint.Request.URLPathPattern
-			case endpoint.Request.URLPathTemplate != "":
-				url = endpoint.Request.URLPathTemplate
-			default:
-				url = endpoint.Request.URL
-			}
-
 			var responseBody string
 			switch {
 			case endpoint.Response.BodyFileName != "":
@@ -149,34 +134,63 @@ func main() {
 	}
 }
 
-func pathMatcher(endpoint Endpoint, gotPathParameter string) bool {
-	// for k, v := range endpoint.Request.QueryParameters {
-	// 	if len(v.EqualTo) != 0 {
-	// 		if gotQuery.Get(k) != v.EqualTo {
-	// 			return false
-	// 		}
-	// 	}
-	// 	if len(v.Matches) != 0 {
-	// 		if !regexp.MustCompile(v.Matches).MatchString(gotQuery.Get(k)) {
-	// 			return false
-	// 		}
-	// 	}
-	// 	if len(v.DoesNotMatch) != 0 {
-	// 		if regexp.MustCompile(v.DoesNotMatch).MatchString(gotQuery.Get(k)) {
-	// 			return false
-	// 		}
-	// 	}
-	// 	if len(v.Contains) != 0 {
-	// 		if !strings.Contains(gotQuery.Get(k), v.Contains) {
-	// 			return false
-	// 		}
-	// 	}
-	// 	if len(v.DoesNotContain) != 0 {
-	// 		if strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
-	// 			return false
-	// 		}
-	// 	}
-	// }
+func pathMatcher(endpoint Endpoint, gotPath string) bool {
+	var url string
+	switch {
+	case endpoint.Request.URL != "":
+		url = endpoint.Request.URL
+	case endpoint.Request.URLPattern != "":
+		url = endpoint.Request.URLPattern
+	case endpoint.Request.URLPath != "":
+		url = endpoint.Request.URLPath
+	case endpoint.Request.URLPathPattern != "":
+		url = endpoint.Request.URLPathPattern
+	case endpoint.Request.URLPathTemplate != "":
+		url = endpoint.Request.URLPathTemplate
+	default:
+		url = endpoint.Request.URL
+	}
+
+	requredPathUnits := strings.Split(url, "/")
+	posMap := make(map[string]int)
+	for k, _ := range endpoint.Request.PathParameters {
+		placeHolder := fmt.Sprintf("{%s}", k)
+		if i := slices.Index(requredPathUnits, placeHolder); i == -1 {
+			slog.Error(fmt.Sprintf("Path parameter %s not found in path %s", k, gotPath))
+			return false
+		} else {
+			posMap[k] = i - 1
+		}
+	}
+
+	gotPathUnits := strings.Split(gotPath, "/")
+	for k, v := range endpoint.Request.PathParameters {
+		if len(v.EqualTo) != 0 {
+			if gotPathUnits[posMap[k]] != v.EqualTo {
+				return false
+			}
+		}
+		// 	if len(v.Matches) != 0 {
+		// 		if !regexp.MustCompile(v.Matches).MatchString(gotQuery.Get(k)) {
+		// 			return false
+		// 		}
+		// 	}
+		// 	if len(v.DoesNotMatch) != 0 {
+		// 		if regexp.MustCompile(v.DoesNotMatch).MatchString(gotQuery.Get(k)) {
+		// 			return false
+		// 		}
+		// 	}
+		// 	if len(v.Contains) != 0 {
+		// 		if !strings.Contains(gotQuery.Get(k), v.Contains) {
+		// 			return false
+		// 		}
+		// 	}
+		// 	if len(v.DoesNotContain) != 0 {
+		// 		if strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
+		// 			return false
+		// 		}
+		// 	}
+	}
 	return true
 }
 

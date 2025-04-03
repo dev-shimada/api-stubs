@@ -1,7 +1,12 @@
 [
   {
     "request": {
-      "url": "/example",
+      "url": "/example/{path1}",
+      "PathParameters": {
+        "path1": {
+          "equalTo": "v1"
+        }
+      },
       "method": "GET",
       "queryParameters": {
         "param1": {
