@@ -1,7 +1,7 @@
 [
   {
     "request": {
-      "url": "/example/{path1}",
+      "urlPathTemplate": "/example/{path1}",
       "PathParameters": {
         "path1": {
           "equalTo": "v1"

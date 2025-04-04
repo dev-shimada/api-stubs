@@ -20,11 +20,11 @@ import (
 
 type Endpoint struct {
 	Request struct {
-		URL             string `json:"url"`
-		URLPattern      string `json:"urlPattern"`
-		URLPath         string `json:"urlPath"`
-		URLPathPattern  string `json:"urlPathPattern"`
-		URLPathTemplate string `json:"urlPathTemplate"`
+		URL             string `json:"url"`             // パスパラメータ、クエリパラメータを含む完全一致
+		URLPattern      string `json:"urlPattern"`      // パスパラメータ、クエリパラメータを含む正規表現での完全一致
+		URLPath         string `json:"urlPath"`         // パスパラメータを含む完全一致
+		URLPathPattern  string `json:"urlPathPattern"`  // パスパラメータを含む正規表現での完全一致
+		URLPathTemplate string `json:"urlPathTemplate"` // パスパラメータを含むテンプレートでの完全一致
 
 		Method          string `json:"method"`
 		QueryParameters map[string]struct {
@@ -78,7 +78,7 @@ func main() {
 				return
 			}
 
-			isMatchPath := pathMatcher(endpoint, r.URL.Path)
+			isMatchPath := pathMatcher(endpoint, r.URL.RawPath, r.URL.Path)
 			isMatchQuery := queryMatcher(endpoint, r.URL.Query())
 			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery {
 				w.WriteHeader(endpoint.Response.Status)
@@ -134,24 +134,49 @@ func main() {
 	}
 }
 
-func pathMatcher(endpoint Endpoint, gotPath string) bool {
+func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) bool {
 	var url string
 	switch {
 	case endpoint.Request.URL != "":
 		url = endpoint.Request.URL
+		if gotRawPath != url {
+			return false
+		}
+		return true
 	case endpoint.Request.URLPattern != "":
 		url = endpoint.Request.URLPattern
+		if !regexp.MustCompile(url).MatchString(gotRawPath) {
+			return false
+		}
+		return true
 	case endpoint.Request.URLPath != "":
 		url = endpoint.Request.URLPath
+		if gotPath != url {
+			return false
+		}
+		return true
 	case endpoint.Request.URLPathPattern != "":
 		url = endpoint.Request.URLPathPattern
+		if !regexp.MustCompile(url).MatchString(gotPath) {
+			return false
+		}
+		return true
 	case endpoint.Request.URLPathTemplate != "":
 		url = endpoint.Request.URLPathTemplate
 	default:
-		url = endpoint.Request.URL
+		return false
 	}
 
+	// trim trailing slashes
+	url = strings.TrimRight(url, "/")
+	gotPath = strings.TrimRight(gotPath, "/")
+
 	requredPathUnits := strings.Split(url, "/")
+	gotPathUnits := strings.Split(gotPath, "/")
+	if len(requredPathUnits) != len(gotPathUnits) {
+		return false
+	}
+
 	posMap := make(map[string]int)
 	for k, _ := range endpoint.Request.PathParameters {
 		placeHolder := fmt.Sprintf("{%s}", k)
@@ -159,11 +184,10 @@ func pathMatcher(endpoint Endpoint, gotPath string) bool {
 			slog.Error(fmt.Sprintf("Path parameter %s not found in path %s", k, gotPath))
 			return false
 		} else {
-			posMap[k] = i - 1
+			posMap[k] = i
 		}
 	}
 
-	gotPathUnits := strings.Split(gotPath, "/")
 	for k, v := range endpoint.Request.PathParameters {
 		if len(v.EqualTo) != 0 {
 			if gotPathUnits[posMap[k]] != v.EqualTo {
