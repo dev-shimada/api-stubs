@@ -121,7 +121,15 @@ func main() {
 	}
 
 	slog.Info("Server is running at :8080 Press CTRL-C to exit.")
-	go srv.ListenAndServe()
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			if err == http.ErrServerClosed {
+				slog.Info("Server closed.")
+			} else {
+				slog.Error(fmt.Sprintf("ListenAndServe: %v", err))
+			}
+		}
+	}()
 
 	<-ctx.Done()
 
