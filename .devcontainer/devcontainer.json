@@ -11,7 +11,8 @@
             "extensions": [
                 "golang.Go",
                 "GitHub.copilot",
-                "saoudrizwan.claude-dev"
+                // "saoudrizwan.claude-dev"
+                "RooVeterinaryInc.roo-cline"
             ]
         }
     },
