@@ -1,13 +1,22 @@
 [
   {
     "request": {
-      "urlPathTemplate": "/example/{path1}/{path2}",
+      "urlPathTemplate": "/example/{path1}/{path2}/{path3}/{path4}/{path5}",
       "PathParameters": {
         "path1": {
           "equalTo": "v1"
         },
         "path2": {
-          "matches": "[a-zA-Z0-9]{3}"
+          "matches": "^[a-zA-Z0-9]{3}$"
+        },
+        "path3": {
+          "doesNotMatch": "[a-zA-Z]{3}"
+        },
+        "path4": {
+          "contains": "a"
+        },
+        "path5": {
+          "doesNotContain": "b"
         }
       },
       "method": "GET",
@@ -19,13 +28,13 @@
           "matches": "[a-zA-Z0-9]{3}"
         },
         "param3": {
-          "doesNotMatch": "[a-zA-Z0-9]{3}"
+          "doesNotMatch": "[a-zA-Z]{3}"
         },
         "param4": {
           "contains": "a"
         },
         "param5": {
-          "doesNotContain": "a"
+          "doesNotContain": "b"
         }
       }
     },

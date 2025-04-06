@@ -16,7 +16,7 @@
           "contains": "a"
         },
         "path5": {
-          "doesNotContain": "a"
+          "doesNotContain": "b"
         }
       },
       "method": "GET",
@@ -34,7 +34,7 @@
           "contains": "a"
         },
         "param5": {
-          "doesNotContain": "a"
+          "doesNotContain": "b"
         }
       }
     },
