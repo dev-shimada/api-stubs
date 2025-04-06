@@ -454,9 +454,6 @@ func Test_loadConfig(t *testing.T) {
 				t.Errorf("loadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("loadConfig() = %v, want %v", got, tt.want)
-			// }
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("diff: %v", cmp.Diff(got, tt.want))
 			}
