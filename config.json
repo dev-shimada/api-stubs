@@ -40,7 +40,7 @@
     },
     "response": {
       "status": 200,
-      "body": "{\"message\": \"This is a stub response\", \"param1\"=\"{{.Query.param1}}\", \"param2\"=\"{{.Query.param2}}\", \"param3\"=\"{{.Query.param3}}\", \"param4\"=\"{{.Query.param4}}\", \"param5\"=\"{{.Query.param5}}\"}\n"
+      "body": "{\"message\": \"This is a stub response\", \"param1\": \"{{.Query.param1}}\", \"param2\": \"{{.Query.param2}}\", \"param3\": \"{{.Query.param3}}\", \"param4\": \"{{.Query.param4}}\", \"param5\": \"{{.Query.param5}}\", \"path1\": \"{{.Path.path1}}\", \"path2\": \"{{.Path.path2}}\", \"path3\": \"{{.Path.path3}}\", \"path4\": \"{{.Path.path4}}\", \"path5\": \"{{.Path.path5}}\"}"
     }
   }
 ]

@@ -15,9 +15,10 @@ func Test_pathMatcher(t *testing.T) {
 		gotPath    string
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name    string
+		args    args
+		want    bool
+		wantMap map[string]string
 	}{
 		{
 			name: "url",
@@ -143,6 +144,13 @@ func Test_pathMatcher(t *testing.T) {
 				gotPath: "http://example.com/12345/67890/00000/abcxyz/12345",
 			},
 			want: true,
+			wantMap: map[string]string{
+				"path1": "12345",
+				"path2": "67890",
+				"path3": "00000",
+				"path4": "abcxyz",
+				"path5": "12345",
+			},
 		},
 		{
 			name: "urlPathTemplate equalTo false",
@@ -232,8 +240,10 @@ func Test_pathMatcher(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := main.ExportPathMatcher(tt.args.endpoint, tt.args.gotRawPath, tt.args.gotPath); got != tt.want {
+			if got, gotMap := main.ExportPathMatcher(tt.args.endpoint, tt.args.gotRawPath, tt.args.gotPath); got != tt.want {
 				t.Errorf("pathMatcher() = %v, want %v", got, tt.want)
+			} else if !cmp.Equal(gotMap, tt.wantMap) {
+				t.Errorf("diff: %v", cmp.Diff(gotMap, tt.wantMap))
 			}
 		})
 	}

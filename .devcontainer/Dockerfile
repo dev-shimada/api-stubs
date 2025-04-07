@@ -9,7 +9,7 @@ ENV LESSCHARSET utf-8
 WORKDIR /workspace
 
 RUN  <<EOF
-apt-get update && apt-get install -y vim git unzip less bash-completion
+apt-get update && apt-get install -y vim git unzip less bash-completion jq
 go install -v golang.org/x/tools/gopls@latest
 go install -v github.com/go-delve/delve/cmd/dlv@latest
 go install -v github.com/cweill/gotests/gotests@latest

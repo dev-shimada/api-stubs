@@ -20,11 +20,11 @@ import (
 
 // define the structure of the JSON configuration file
 type Matcher struct {
-	EqualTo        string `json:"equalTo"`
-	Matches        string `json:"matches"`
-	DoesNotMatch   string `json:"doesNotMatch"`
-	Contains       string `json:"contains"`
-	DoesNotContain string `json:"doesNotContain"`
+	EqualTo        any `json:"equalTo"`
+	Matches        any `json:"matches"`
+	DoesNotMatch   any `json:"doesNotMatch"`
+	Contains       any `json:"contains"`
+	DoesNotContain any `json:"doesNotContain"`
 }
 type Request struct {
 	URL             string `json:"url"`             // パスパラメータ、クエリパラメータを含む完全一致
@@ -76,7 +76,7 @@ func main() {
 				return
 			}
 
-			isMatchPath := pathMatcher(endpoint, r.URL.RawPath, r.URL.Path)
+			isMatchPath, pathMap := pathMatcher(endpoint, r.URL.RawPath, r.URL.Path)
 			isMatchQuery := queryMatcher(endpoint, r.URL.Query())
 			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery {
 				w.WriteHeader(endpoint.Response.Status)
@@ -98,6 +98,7 @@ func main() {
 				}
 				gp := gotParams{
 					Query: q,
+					Path:  pathMap,
 				}
 
 				if err := tpl.Execute(w, gp); err != nil {
@@ -140,7 +141,7 @@ func main() {
 	}
 }
 
-func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) bool {
+func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) (bool, map[string]string) {
 	// trim trailing slashes
 	gotPath = strings.TrimRight(gotPath, "/")
 	gotRawPath = strings.TrimRight(gotRawPath, "/")
@@ -150,105 +151,110 @@ func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) bool {
 	case endpoint.Request.URL != "":
 		url = strings.TrimRight(endpoint.Request.URL, "/")
 		if gotRawPath != url {
-			return false
+			return false, nil
 		}
-		return true
+		return true, nil
 	case endpoint.Request.URLPattern != "":
 		url = strings.TrimRight(endpoint.Request.URLPattern, "/")
 		if !regexp.MustCompile(url).MatchString(gotRawPath) {
-			return false
+			return false, nil
 		}
-		return true
+		return true, nil
 	case endpoint.Request.URLPath != "":
 		url = strings.TrimRight(endpoint.Request.URLPath, "/")
 		if gotPath != url {
-			return false
+			return false, nil
 		}
-		return true
+		return true, nil
 	case endpoint.Request.URLPathPattern != "":
 		url = strings.TrimRight(endpoint.Request.URLPathPattern, "/")
 		if !regexp.MustCompile(url).MatchString(gotPath) {
-			return false
+			return false, nil
 		}
-		return true
+		return true, nil
 	case endpoint.Request.URLPathTemplate != "":
 		url = strings.TrimRight(endpoint.Request.URLPathTemplate, "/")
 	default:
-		return false
+		return false, nil
 	}
 
 	// check if the path parameters match
 	requredPathUnits := strings.Split(url, "/")
 	gotPathUnits := strings.Split(gotPath, "/")
 	if len(requredPathUnits) != len(gotPathUnits) {
-		return false
+		return false, nil
 	}
 
+	// placeholder->position
 	posMap := make(map[string]int)
 	for k := range endpoint.Request.PathParameters {
 		placeHolder := fmt.Sprintf("{%s}", k)
 		if i := slices.Index(requredPathUnits, placeHolder); i == -1 {
 			slog.Error(fmt.Sprintf("Path parameter %s not found in path %s", k, gotPath))
-			return false
+			return false, nil
 		} else {
 			posMap[k] = i
 		}
 	}
 
 	for k, v := range endpoint.Request.PathParameters {
-		if len(v.EqualTo) != 0 {
+		if v.EqualTo != nil {
 			if gotPathUnits[posMap[k]] != v.EqualTo {
-				return false
+				return false, nil
 			}
 		}
-		if len(v.Matches) != 0 {
-			if !regexp.MustCompile(v.Matches).MatchString(gotPathUnits[posMap[k]]) {
-				return false
+		if v.Matches != nil {
+			if !regexp.MustCompile(v.Matches.(string)).MatchString(gotPathUnits[posMap[k]]) {
+				return false, nil
 			}
 		}
-		if len(v.DoesNotMatch) != 0 {
-			if regexp.MustCompile(v.DoesNotMatch).MatchString(gotPathUnits[posMap[k]]) {
-				return false
+		if v.DoesNotMatch != nil {
+			if regexp.MustCompile(v.DoesNotMatch.(string)).MatchString(gotPathUnits[posMap[k]]) {
+				return false, nil
 			}
 		}
-		if len(v.Contains) != 0 {
-			if !strings.Contains(gotPathUnits[posMap[k]], v.Contains) {
-				return false
+		if v.Contains != nil {
+			if !strings.Contains(gotPathUnits[posMap[k]], v.Contains.(string)) {
+				return false, nil
 			}
 		}
-		if len(v.DoesNotContain) != 0 {
-			if strings.Contains(gotPathUnits[posMap[k]], v.DoesNotContain) {
-				return false
+		if v.DoesNotContain != nil {
+			if strings.Contains(gotPathUnits[posMap[k]], v.DoesNotContain.(string)) {
+				return false, nil
 			}
 		}
 	}
-	return true
+	ret := make(map[string]string)
+	for k, v := range posMap {
+		ret[k] = gotPathUnits[v]
+	}
+	return true, ret
 }
 
 func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 	for k, v := range endpoint.Request.QueryParameters {
-		if len(v.EqualTo) != 0 {
+		if v.EqualTo != nil {
 			if gotQuery.Get(k) != v.EqualTo {
 				return false
 			}
 		}
-		if len(v.Matches) != 0 {
-			if !regexp.MustCompile(v.Matches).MatchString(gotQuery.Get(k)) {
+		if v.Matches != nil {
+			if !regexp.MustCompile(v.Matches.(string)).MatchString(gotQuery.Get(k)) {
 				return false
 			}
 		}
-		if len(v.DoesNotMatch) != 0 {
-			if regexp.MustCompile(v.DoesNotMatch).MatchString(gotQuery.Get(k)) {
+		if v.DoesNotMatch != nil {
+			if regexp.MustCompile(v.DoesNotMatch.(string)).MatchString(gotQuery.Get(k)) {
 				return false
 			}
 		}
-		if len(v.Contains) != 0 {
-			if !strings.Contains(gotQuery.Get(k), v.Contains) {
+		if v.Contains != nil {
+			if !strings.Contains(gotQuery.Get(k), v.Contains.(string)) {
 				return false
 			}
 		}
-		if len(v.DoesNotContain) != 0 {
-			if strings.Contains(gotQuery.Get(k), v.DoesNotContain) {
+		if v.DoesNotContain != nil {
+			if strings.Contains(gotQuery.Get(k), v.DoesNotContain.(string)) {
 				return false
 			}
 		}
