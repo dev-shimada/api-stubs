@@ -36,7 +36,7 @@ type Request struct {
 	Method          string             `json:"method"`
 	QueryParameters map[string]Matcher `json:"queryParameters"`
 	PathParameters  map[string]Matcher `json:"pathParameters"`
-	// BodyPatterns    []map[string]string          `json:"bodyParameters"`
+	Body            map[string]Matcher `json:"body"`
 }
 type Response struct {
 	Status        int               `json:"status"`
@@ -81,13 +81,6 @@ func main() {
 			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery {
 				w.WriteHeader(endpoint.Response.Status)
 
-				tpl, err := template.New("response").Parse(responseBody)
-				if err != nil {
-					slog.Error(fmt.Sprintf("Failed to parse response template: %s", err))
-					http.Error(w, "Failed to parse response template", http.StatusInternalServerError)
-					return
-				}
-
 				type gotParams struct {
 					Path  map[string]string
 					Query map[string]string
@@ -101,12 +94,48 @@ func main() {
 					Path:  pathMap,
 				}
 
+				// bodyFileNameが指定されている場合は、bodyは無視される
+				if endpoint.Response.BodyFileName != "" {
+					file, err := os.Open(endpoint.Response.BodyFileName)
+					if err != nil {
+						slog.Error(fmt.Sprintf("Failed to open body file: %s", err))
+						http.Error(w, "Failed to open body file", http.StatusInternalServerError)
+						return
+					}
+					defer file.Close()
+					body, err := io.ReadAll(file)
+					if err != nil {
+						slog.Error(fmt.Sprintf("Failed to read body file: %s", err))
+						http.Error(w, "Failed to read body file", http.StatusInternalServerError)
+						return
+					}
+					responseBody = string(body)
+					tpl, err := template.New("response").Parse(responseBody)
+					if err != nil {
+						slog.Error(fmt.Sprintf("Failed to parse response template: %s", err))
+						http.Error(w, "Failed to parse response template", http.StatusInternalServerError)
+						return
+					}
+					if err := tpl.Execute(w, gp); err != nil {
+						slog.Error(fmt.Sprintf("Failed to execute response template: %s", err))
+						http.Error(w, "Failed to execute response template", http.StatusInternalServerError)
+						return
+					}
+					return
+				}
+
+				// bodyFileNameが指定されていない場合は、bodyを使用する
+				tpl, err := template.New("response").Parse(responseBody)
+				if err != nil {
+					slog.Error(fmt.Sprintf("Failed to parse response template: %s", err))
+					http.Error(w, "Failed to parse response template", http.StatusInternalServerError)
+					return
+				}
 				if err := tpl.Execute(w, gp); err != nil {
 					slog.Error(fmt.Sprintf("Failed to execute response template: %s", err))
 					http.Error(w, "Failed to execute response template", http.StatusInternalServerError)
 					return
 				}
-
 				return
 			}
 		}
@@ -199,7 +228,7 @@ func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) (bool, map[strin
 
 	for k, v := range endpoint.Request.PathParameters {
 		if v.EqualTo != nil {
-			if gotPathUnits[posMap[k]] != v.EqualTo {
+			if gotPathUnits[posMap[k]] != fmt.Sprint(v.EqualTo) {
 				return false, nil
 			}
 		}
@@ -234,7 +263,7 @@ func pathMatcher(endpoint Endpoint, gotRawPath, gotPath string) (bool, map[strin
 func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 	for k, v := range endpoint.Request.QueryParameters {
 		if v.EqualTo != nil {
-			if gotQuery.Get(k) != v.EqualTo {
+			if gotQuery.Get(k) != fmt.Sprint(v.EqualTo) {
 				return false
 			}
 		}
@@ -261,6 +290,37 @@ func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 	}
 	return true
 }
+
+// func bodyMatcher(endpoint Endpoint, body string) bool {
+// 	for k, v := range endpoint.Request.Body {
+// 		if v.EqualTo != nil {
+// 			if k != fmt.Sprint(v.EqualTo) {
+// 				return false
+// 			}
+// 		}
+// 		if v.Matches != nil {
+// 			if !regexp.MustCompile(v.Matches.(string)).MatchString(k) {
+// 				return false
+// 			}
+// 		}
+// 		if v.DoesNotMatch != nil {
+// 			if regexp.MustCompile(v.DoesNotMatch.(string)).MatchString(k) {
+// 				return false
+// 			}
+// 		}
+// 		if v.Contains != nil {
+// 			if !strings.Contains(k, v.Contains.(string)) {
+// 				return false
+// 			}
+// 		}
+// 		if v.DoesNotContain != nil {
+// 			if strings.Contains(k, v.DoesNotContain.(string)) {
+// 				return false
+// 			}
+// 		}
+// 	}
+// 	return true
+// }
 
 func loadConfig(filePath string) ([]Endpoint, error) {
 	file, err := os.Open(filePath)
