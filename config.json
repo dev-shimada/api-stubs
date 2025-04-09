@@ -36,6 +36,9 @@
         "param5": {
           "doesNotContain": "b"
         }
+      },
+      "body": {
+        "equalTo": "{\"key\": \"value\"}"
       }
     },
     "response": {

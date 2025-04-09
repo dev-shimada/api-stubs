@@ -36,7 +36,7 @@ type Request struct {
 	Method          string             `json:"method"`
 	QueryParameters map[string]Matcher `json:"queryParameters"`
 	PathParameters  map[string]Matcher `json:"pathParameters"`
-	Body            map[string]Matcher `json:"body"`
+	Body            Matcher            `json:"body"`
 }
 type Response struct {
 	Status        int               `json:"status"`
@@ -78,7 +78,14 @@ func main() {
 
 			isMatchPath, pathMap := pathMatcher(endpoint, r.URL.RawPath, r.URL.Path)
 			isMatchQuery := queryMatcher(endpoint, r.URL.Query())
-			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				slog.Error(fmt.Sprintf("Failed to read request body: %s", err))
+				http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+				return
+			}
+			isMatchBody := bodyMatcher(endpoint, string(body))
+			if r.Method == endpoint.Request.Method && isMatchPath && isMatchQuery && isMatchBody {
 				w.WriteHeader(endpoint.Response.Status)
 
 				type gotParams struct {
@@ -291,36 +298,34 @@ func queryMatcher(endpoint Endpoint, gotQuery url.Values) bool {
 	return true
 }
 
-// func bodyMatcher(endpoint Endpoint, body string) bool {
-// 	for k, v := range endpoint.Request.Body {
-// 		if v.EqualTo != nil {
-// 			if k != fmt.Sprint(v.EqualTo) {
-// 				return false
-// 			}
-// 		}
-// 		if v.Matches != nil {
-// 			if !regexp.MustCompile(v.Matches.(string)).MatchString(k) {
-// 				return false
-// 			}
-// 		}
-// 		if v.DoesNotMatch != nil {
-// 			if regexp.MustCompile(v.DoesNotMatch.(string)).MatchString(k) {
-// 				return false
-// 			}
-// 		}
-// 		if v.Contains != nil {
-// 			if !strings.Contains(k, v.Contains.(string)) {
-// 				return false
-// 			}
-// 		}
-// 		if v.DoesNotContain != nil {
-// 			if strings.Contains(k, v.DoesNotContain.(string)) {
-// 				return false
-// 			}
-// 		}
-// 	}
-// 	return true
-// }
+func bodyMatcher(endpoint Endpoint, body string) bool {
+	if endpoint.Request.Body.EqualTo != nil {
+		if body != fmt.Sprint(endpoint.Request.Body.EqualTo) {
+			return false
+		}
+	}
+	if endpoint.Request.Body.Matches != nil {
+		if !regexp.MustCompile(endpoint.Request.Body.Matches.(string)).MatchString(body) {
+			return false
+		}
+	}
+	if endpoint.Request.Body.DoesNotMatch != nil {
+		if regexp.MustCompile(endpoint.Request.Body.DoesNotMatch.(string)).MatchString(body) {
+			return false
+		}
+	}
+	if endpoint.Request.Body.Contains != nil {
+		if !strings.Contains(body, endpoint.Request.Body.Contains.(string)) {
+			return false
+		}
+	}
+	if endpoint.Request.Body.DoesNotContain != nil {
+		if strings.Contains(body, endpoint.Request.Body.DoesNotContain.(string)) {
+			return false
+		}
+	}
+	return true
+}
 
 func loadConfig(filePath string) ([]Endpoint, error) {
 	file, err := os.Open(filePath)
