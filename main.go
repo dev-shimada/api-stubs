@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -54,7 +55,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		endpoints, err := loadConfig("config.json")
+		endpoints, err := loadConfig("configs")
 		if err != nil {
 			slog.Error(fmt.Sprintf("Failed to load configuration: %v", err))
 		}
@@ -327,16 +328,28 @@ func bodyMatcher(endpoint Endpoint, body string) bool {
 	return true
 }
 
-func loadConfig(filePath string) ([]Endpoint, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
+func loadConfig(dir string) ([]Endpoint, error) {
 	var endpoints []Endpoint
-	byteValue, _ := io.ReadAll(file)
-	err = json.Unmarshal(byteValue, &endpoints)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Ext(path) != ".json" {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		byteValue, _ := io.ReadAll(file)
+		err = json.Unmarshal(byteValue, &endpoints)
+		if err != nil {
+			return err
+		}
+		endpoints = append(endpoints, endpoints...)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
